@@ -37,6 +37,10 @@
       font-size: 28px;
     }
 
+    h2 {
+      margin: 0;
+    }
+
     .subtitle {
       color: #777;
       margin-top: 6px;
@@ -90,6 +94,39 @@
       margin-bottom: 25px;
     }
 
+    .booking-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 25px;
+      margin-bottom: 15px;
+    }
+
+    .booking {
+      border: 1px solid #e5e5e5;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 10px;
+      background: #fafafa;
+    }
+
+    .booking-date {
+      font-size: 18px;
+      font-weight: bold;
+      margin-bottom: 8px;
+    }
+
+    .booking-info {
+      color: #555;
+      line-height: 1.6;
+    }
+
+    .empty {
+      text-align: center;
+      color: #888;
+      padding: 30px 10px;
+    }
+
     .message {
       margin-top: 15px;
       padding: 13px;
@@ -119,7 +156,7 @@
 
 <div class="container">
 
-  <!-- 로그인 화면 -->
+  <!-- 관리자 로그인 -->
   <div id="loginSection" class="card login-box">
 
     <h1>JAY BARBER</h1>
@@ -164,9 +201,17 @@
 
     <div id="adminMessage" class="message"></div>
 
-    <p>
-      관리자 로그인 성공
-    </p>
+    <div class="booking-header">
+      <h2>예약 목록</h2>
+
+      <button id="refreshBtn" class="logout-btn">
+        새로고침
+      </button>
+    </div>
+
+    <div id="bookingList">
+      예약 정보를 불러오는 중...
+    </div>
 
   </div>
 
@@ -175,8 +220,11 @@
 
 <script>
 
-  const SUPABASE_URL = "https://rupsdtnlkxyesgvnwpor.supabase.co";
-  const SUPABASE_KEY = "sb_publishable_OIcz_R6kDyWs8z_rZN1V_w_-CTf5Fno";
+  const SUPABASE_URL =
+    "https://rupsdtnlkxyesgvnwpor.supabase.co";
+
+  const SUPABASE_KEY =
+    "sb_publishable_OIcz_R6kDyWs8z_rZN1V_w_-CTf5Fno";
 
   const supabaseClient = window.supabase.createClient(
     SUPABASE_URL,
@@ -184,48 +232,158 @@
   );
 
 
-  const loginSection = document.getElementById("loginSection");
-  const adminSection = document.getElementById("adminSection");
+  const loginSection =
+    document.getElementById("loginSection");
 
-  const emailEl = document.getElementById("email");
-  const passwordEl = document.getElementById("password");
+  const adminSection =
+    document.getElementById("adminSection");
 
-  const loginBtn = document.getElementById("loginBtn");
-  const logoutBtn = document.getElementById("logoutBtn");
+  const emailEl =
+    document.getElementById("email");
 
-  const loginMessage = document.getElementById("loginMessage");
-  const adminMessage = document.getElementById("adminMessage");
+  const passwordEl =
+    document.getElementById("password");
+
+  const loginBtn =
+    document.getElementById("loginBtn");
+
+  const logoutBtn =
+    document.getElementById("logoutBtn");
+
+  const refreshBtn =
+    document.getElementById("refreshBtn");
+
+  const loginMessage =
+    document.getElementById("loginMessage");
+
+  const adminMessage =
+    document.getElementById("adminMessage");
+
+  const bookingList =
+    document.getElementById("bookingList");
 
 
   function showLoginMessage(text, type) {
+
     loginMessage.textContent = text;
     loginMessage.className = `message ${type}`;
+
   }
 
 
   function showAdminMessage(text, type) {
+
     adminMessage.textContent = text;
     adminMessage.className = `message ${type}`;
+
   }
 
 
+  // 예약 목록 불러오기
+  async function loadBookings() {
+
+    bookingList.innerHTML =
+      "예약 정보를 불러오는 중...";
+
+
+    const { data, error } = await supabaseClient
+      .from("bookings")
+      .select(
+        "company, barracks, booking_date, booking_time"
+      )
+      .order(
+        "booking_date",
+        { ascending: true }
+      )
+      .order(
+        "booking_time",
+        { ascending: true }
+      );
+
+
+    if (error) {
+
+      console.error(error);
+
+      bookingList.innerHTML = `
+        <div class="empty">
+          예약 정보를 불러오지 못했습니다.
+        </div>
+      `;
+
+      return;
+    }
+
+
+    if (!data || data.length === 0) {
+
+      bookingList.innerHTML = `
+        <div class="empty">
+          현재 예약이 없습니다.
+        </div>
+      `;
+
+      return;
+    }
+
+
+    bookingList.innerHTML = "";
+
+
+    data.forEach(booking => {
+
+      const div =
+        document.createElement("div");
+
+      div.className = "booking";
+
+
+      div.innerHTML = `
+        <div class="booking-date">
+          ${booking.booking_date}
+          ${booking.booking_time.slice(0, 5)}
+        </div>
+
+        <div class="booking-info">
+          중대: ${booking.company}<br>
+          생활관: ${booking.barracks}
+        </div>
+      `;
+
+
+      bookingList.appendChild(div);
+
+    });
+
+  }
+
+
+  // 관리자 권한 확인
   async function checkAdmin() {
 
     const {
       data: { user }
     } = await supabaseClient.auth.getUser();
 
+
     if (!user) {
       return;
     }
 
-    const { data, error } = await supabaseClient
-      .from("profiles")
-      .select("is_admin")
-      .eq("id", user.id)
-      .single();
 
-    if (error || !data || data.is_admin !== true) {
+    const { data, error } =
+      await supabaseClient
+        .from("profiles")
+        .select("is_admin")
+        .eq("id", user.id)
+        .single();
+
+
+    if (
+      error ||
+      !data ||
+      data.is_admin !== true
+    ) {
 
       await supabaseClient.auth.signOut();
 
@@ -237,78 +395,112 @@
       return;
     }
 
+
     loginSection.classList.add("hidden");
     adminSection.classList.remove("hidden");
+
 
     showAdminMessage(
       `${user.email} 관리자 로그인 완료`,
       "success"
     );
+
+
+    // 로그인 성공하면 예약 목록 자동으로 불러오기
+    await loadBookings();
+
   }
 
 
-  loginBtn.addEventListener("click", async () => {
+  // 로그인
+  loginBtn.addEventListener(
+    "click",
+    async () => {
 
-    const email = emailEl.value.trim();
-    const password = passwordEl.value;
+      const email =
+        emailEl.value.trim();
 
-    if (!email || !password) {
-
-      showLoginMessage(
-        "이메일과 비밀번호를 입력해주세요.",
-        "error"
-      );
-
-      return;
-    }
-
-    loginBtn.disabled = true;
-    loginBtn.textContent = "로그인 중...";
+      const password =
+        passwordEl.value;
 
 
-    const { error } = await supabaseClient.auth.signInWithPassword({
-      email: email,
-      password: password
-    });
+      if (!email || !password) {
+
+        showLoginMessage(
+          "이메일과 비밀번호를 입력해주세요.",
+          "error"
+        );
+
+        return;
+      }
 
 
-    if (error) {
+      loginBtn.disabled = true;
+      loginBtn.textContent =
+        "로그인 중...";
 
-      console.error(error);
 
-      showLoginMessage(
-        "로그인에 실패했습니다. 이메일 또는 비밀번호를 확인해주세요.",
-        "error"
-      );
+      const { error } =
+        await supabaseClient.auth
+          .signInWithPassword({
+            email: email,
+            password: password
+          });
+
+
+      if (error) {
+
+        console.error(error);
+
+        showLoginMessage(
+          "로그인에 실패했습니다. 이메일 또는 비밀번호를 확인해주세요.",
+          "error"
+        );
+
+        loginBtn.disabled = false;
+        loginBtn.textContent =
+          "관리자 로그인";
+
+        return;
+      }
+
+
+      await checkAdmin();
+
 
       loginBtn.disabled = false;
-      loginBtn.textContent = "관리자 로그인";
+      loginBtn.textContent =
+        "관리자 로그인";
 
-      return;
     }
+  );
 
 
-    await checkAdmin();
-
-    loginBtn.disabled = false;
-    loginBtn.textContent = "관리자 로그인";
-
-  });
-
-
-  logoutBtn.addEventListener("click", async () => {
-
-    await supabaseClient.auth.signOut();
-
-    adminSection.classList.add("hidden");
-    loginSection.classList.remove("hidden");
-
-    emailEl.value = "";
-    passwordEl.value = "";
-
-  });
+  // 새로고침
+  refreshBtn.addEventListener(
+    "click",
+    loadBookings
+  );
 
 
+  // 로그아웃
+  logoutBtn.addEventListener(
+    "click",
+    async () => {
+
+      await supabaseClient.auth.signOut();
+
+      adminSection.classList.add("hidden");
+      loginSection.classList.remove("hidden");
+
+      emailEl.value = "";
+      passwordEl.value = "";
+
+    }
+  );
+
+
+  // 페이지 처음 열었을 때 로그인 상태 확인
   checkAdmin();
 
 </script>
