@@ -1,37 +1,371 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ko">
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>JAY BARBER | 이발 예약</title>
-<style>
-*{box-sizing:border-box}body{margin:0;background:#f5f5f5;color:#111;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}header{background:#111;color:#fff;text-align:center;padding:30px 18px}h1{margin:0;font-size:28px}header p{margin:7px 0 0;color:#bbb}.wrap{max-width:560px;margin:25px auto;padding:0 16px}.card{background:#fff;border-radius:18px;padding:22px;box-shadow:0 5px 20px #00000012}h2{margin:0 0 20px}label{display:block;font-weight:700;margin:17px 0 7px}input,select{width:100%;padding:14px;border:1px solid #ddd;border-radius:10px;font-size:16px;background:#fff}.times{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}.time{padding:12px 5px;border:1px solid #ddd;border-radius:10px;background:#fff;font-size:15px;cursor:pointer}.time.selected{background:#111;color:#fff;border-color:#111}.time:disabled{background:#eee;color:#aaa;cursor:not-allowed;text-decoration:line-through}.submit{width:100%;margin-top:22px;padding:15px;border:0;border-radius:11px;background:#111;color:#fff;font-size:17px;font-weight:700;cursor:pointer}.notice{padding:12px;background:#f1f1f1;border-radius:10px;color:#555;font-size:14px}.success{text-align:center;padding:25px 5px}.check{font-size:50px}.hidden{display:none}@media(max-width:430px){.times{grid-template-columns:repeat(2,1fr)}}
-</style></head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JAY BARBER 예약</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, "Noto Sans KR", sans-serif;
+      background: #f5f5f5;
+      color: #111;
+    }
+
+    .container {
+      max-width: 480px;
+      margin: 0 auto;
+      padding: 30px 20px 50px;
+    }
+
+    .card {
+      background: white;
+      border-radius: 18px;
+      padding: 28px 22px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    }
+
+    h1 {
+      margin: 0;
+      text-align: center;
+      font-size: 30px;
+      letter-spacing: 2px;
+    }
+
+    .subtitle {
+      text-align: center;
+      color: #777;
+      margin: 8px 0 28px;
+    }
+
+    label {
+      display: block;
+      font-weight: bold;
+      margin: 18px 0 8px;
+    }
+
+    select,
+    input {
+      width: 100%;
+      padding: 14px;
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      font-size: 16px;
+      background: white;
+    }
+
+    .times {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 9px;
+    }
+
+    .time-btn {
+      padding: 13px 5px;
+      border: 1px solid #ddd;
+      border-radius: 9px;
+      background: white;
+      font-size: 15px;
+      cursor: pointer;
+    }
+
+    .time-btn:hover {
+      background: #f1f1f1;
+    }
+
+    .time-btn.selected {
+      background: #111;
+      color: white;
+      border-color: #111;
+    }
+
+    .time-btn.booked {
+      background: #e9e9e9;
+      color: #aaa;
+      cursor: not-allowed;
+      text-decoration: line-through;
+    }
+
+    button.reserve {
+      width: 100%;
+      margin-top: 25px;
+      padding: 16px;
+      border: none;
+      border-radius: 11px;
+      background: #111;
+      color: white;
+      font-size: 17px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    button.reserve:disabled {
+      background: #aaa;
+      cursor: not-allowed;
+    }
+
+    .notice {
+      margin-top: 16px;
+      text-align: center;
+      font-size: 14px;
+      color: #777;
+    }
+
+    .message {
+      display: none;
+      margin-top: 18px;
+      padding: 14px;
+      border-radius: 10px;
+      text-align: center;
+      font-weight: bold;
+    }
+
+    .success {
+      display: block;
+      background: #e9f7ef;
+      color: #187a45;
+    }
+
+    .error {
+      display: block;
+      background: #fff0f0;
+      color: #c62828;
+    }
+  </style>
+</head>
+
 <body>
-<header><h1>JAY BARBER</h1><p>군부대 이발 예약</p></header>
-<div class="wrap">
-<div id="booking" class="card">
-<h2>이발 예약</h2>
-<div class="notice">원하는 날짜와 시간을 선택해 주세요.<br>예약 가능한 시간만 선택할 수 있습니다.</div>
-<label for="company">중대</label>
-<select id="company"><option value="작전지원 중대">작전지원 중대</option><option value="본부중대">본부중대</option></select>
-<label for="room">생활관 이름</label>
-<input id="room" placeholder="예: 3생활관">
-<label for="date">예약 날짜</label>
-<input id="date" type="date">
-<label>예약 시간</label>
-<div id="times" class="times"></div>
-<button class="submit" onclick="book()">예약하기</button>
+
+<div class="container">
+  <div class="card">
+
+    <h1>JAY BARBER</h1>
+    <div class="subtitle">커트 예약</div>
+
+    <label for="company">중대</label>
+    <select id="company">
+      <option value="">중대를 선택하세요</option>
+      <option value="작전지원 중대">작전지원 중대</option>
+      <option value="본부중대">본부중대</option>
+    </select>
+
+    <label for="barracks">생활관 이름</label>
+    <input
+      id="barracks"
+      type="text"
+      placeholder="예: 3생활관"
+      maxlength="30"
+    >
+
+    <label for="date">예약 날짜</label>
+    <input id="date" type="date">
+
+    <label>예약 시간</label>
+    <div id="times" class="times"></div>
+
+    <button id="reserveBtn" class="reserve" disabled>
+      예약하기
+    </button>
+
+    <div class="notice">
+      커트 1명 / 30분
+    </div>
+
+    <div id="message" class="message"></div>
+
+  </div>
 </div>
-<div id="done" class="card hidden"><div class="success"><div class="check">✓</div><h2>예약 완료</h2><p id="doneText"></p><div class="notice">예약번호를 캡처해 두세요.</div><button class="submit" onclick="location.reload()">새 예약</button></div></div>
-</div>
+
 <script>
-const slots=["10:00","10:30","11:00","11:30","12:00","12:30","13:00","13:30","14:00","14:30","15:00","15:30","16:00","16:30","17:00","17:30","18:00","18:30","19:00","19:30","20:00"];
-const date=document.getElementById('date'),times=document.getElementById('times');let selected='';
-function today(){return new Date().toLocaleDateString('sv-SE',{timeZone:'Asia/Seoul'})}
-date.min=today();date.value=today();
-function key(){return 'jaybarber_reservations_v1'}
-function get(){return JSON.parse(localStorage.getItem(key())||'[]')}
-function render(){selected='';times.innerHTML='';const booked=get().filter(x=>x.date===date.value).map(x=>x.time);slots.forEach(t=>{const b=document.createElement('button');b.className='time';b.textContent=t;b.disabled=booked.includes(t);b.onclick=()=>{document.querySelectorAll('.time').forEach(x=>x.classList.remove('selected'));b.classList.add('selected');selected=t};times.appendChild(b)})}
-function book(){const room=document.getElementById('room').value.trim();if(!room)return alert('생활관 이름을 입력해 주세요.');if(!selected)return alert('예약 시간을 선택해 주세요.');const arr=get();if(arr.some(x=>x.date===date.value&&x.time===selected)){render();return alert('이미 예약된 시간입니다.');}const id='JB-'+Date.now().toString().slice(-6);arr.push({id,company:document.getElementById('company').value,room,date:date.value,time:selected,created:new Date().toISOString()});localStorage.setItem(key(),JSON.stringify(arr));document.getElementById('booking').classList.add('hidden');document.getElementById('done').classList.remove('hidden');document.getElementById('doneText').innerHTML=`<b>${date.value}</b> ${selected}<br>${document.getElementById('company').value}<br>${room}<br><br>예약번호 <b>${id}</b>`}
-date.addEventListener('change',render);render();
-</script></body></html>
+  const SUPABASE_URL = "https://rupsdtnlkxyesgvnwpor.supabase.co";
+  const SUPABASE_KEY = "sb_publishable_OIcz_R6kDyWs8z_rZN1V_w_-CTf5Fno";
+
+  const supabaseClient = window.supabase.createClient(
+    SUPABASE_URL,
+    SUPABASE_KEY
+  );
+
+  const companyEl = document.getElementById("company");
+  const barracksEl = document.getElementById("barracks");
+  const dateEl = document.getElementById("date");
+  const timesEl = document.getElementById("times");
+  const reserveBtn = document.getElementById("reserveBtn");
+  const messageEl = document.getElementById("message");
+
+  const times = [
+    "17:00",
+    "17:30",
+    "18:00",
+    "18:30",
+    "19:00",
+    "19:30",
+    "20:00",
+    "20:30",
+    "21:00"
+  ];
+
+  let selectedTime = "";
+
+  // 오늘 이전 날짜 선택 방지
+  const today = new Date();
+  const yyyy = today.getFullYear();
+  const mm = String(today.getMonth() + 1).padStart(2, "0");
+  const dd = String(today.getDate()).padStart(2, "0");
+  dateEl.min = `${yyyy}-${mm}-${dd}`;
+
+  function showMessage(text, type) {
+    messageEl.textContent = text;
+    messageEl.className = `message ${type}`;
+  }
+
+  function clearMessage() {
+    messageEl.textContent = "";
+    messageEl.className = "message";
+  }
+
+  async function loadBookedTimes() {
+    selectedTime = "";
+    reserveBtn.disabled = true;
+    clearMessage();
+
+    timesEl.innerHTML = "";
+
+    if (!dateEl.value) {
+      return;
+    }
+
+    const { data, error } = await supabaseClient
+      .from("bookings")
+      .select("booking_time")
+      .eq("booking_date", dateEl.value);
+
+    if (error) {
+      console.error(error);
+      showMessage("예약 정보를 불러오지 못했습니다.", "error");
+      return;
+    }
+
+    const bookedTimes = new Set(
+      data.map(row => row.booking_time.slice(0, 5))
+    );
+
+    times.forEach(time => {
+      const button = document.createElement("button");
+
+      button.type = "button";
+      button.className = "time-btn";
+      button.textContent = time;
+
+      if (bookedTimes.has(time)) {
+        button.classList.add("booked");
+        button.disabled = true;
+      } else {
+        button.addEventListener("click", () => {
+          document
+            .querySelectorAll(".time-btn.selected")
+            .forEach(btn => btn.classList.remove("selected"));
+
+          button.classList.add("selected");
+          selectedTime = time;
+
+          checkForm();
+        });
+      }
+
+      timesEl.appendChild(button);
+    });
+  }
+
+  function checkForm() {
+    reserveBtn.disabled = !(
+      companyEl.value &&
+      barracksEl.value.trim() &&
+      dateEl.value &&
+      selectedTime
+    );
+  }
+
+  companyEl.addEventListener("change", checkForm);
+
+  barracksEl.addEventListener("input", checkForm);
+
+  dateEl.addEventListener("change", loadBookedTimes);
+
+  reserveBtn.addEventListener("click", async () => {
+
+    if (!companyEl.value ||
+        !barracksEl.value.trim() ||
+        !dateEl.value ||
+        !selectedTime) {
+      return;
+    }
+
+    reserveBtn.disabled = true;
+    reserveBtn.textContent = "예약 중...";
+
+    clearMessage();
+
+    const { error } = await supabaseClient
+      .from("bookings")
+      .insert({
+        company: companyEl.value,
+        barracks: barracksEl.value.trim(),
+        booking_date: dateEl.value,
+        booking_time: selectedTime
+      });
+
+    if (error) {
+
+      console.error(error);
+
+      if (error.code === "23505") {
+        showMessage(
+          "방금 다른 사람이 예약했습니다. 다른 시간을 선택해주세요.",
+          "error"
+        );
+      } else {
+        showMessage(
+          "예약에 실패했습니다. 잠시 후 다시 시도해주세요.",
+          "error"
+        );
+      }
+
+      await loadBookedTimes();
+
+      reserveBtn.textContent = "예약하기";
+      checkForm();
+
+      return;
+    }
+
+    showMessage(
+      `${dateEl.value} ${selectedTime} 예약이 완료되었습니다.`,
+      "success"
+    );
+
+    reserveBtn.textContent = "예약 완료";
+
+    // 입력값 초기화
+    companyEl.value = "";
+    barracksEl.value = "";
+    dateEl.value = "";
+    timesEl.innerHTML = "";
+    selectedTime = "";
+
+    setTimeout(() => {
+      reserveBtn.textContent = "예약하기";
+      reserveBtn.disabled = true;
+    }, 2000);
+  });
+
+</script>
+
+</body>
+</html>
