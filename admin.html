@@ -26,7 +26,10 @@ button{width:100%;padding:13px;margin-top:8px;border:0;border-radius:8px;backgro
     <input id="email" type="email" placeholder="관리자 이메일">
     <input id="password" type="password" placeholder="비밀번호">
     <button id="loginBtn">로그인</button>
-    <button class="small" id="showReset" type="button">비밀번호를 잊으셨나요?</button>
+    <button id="showReset" type="button"
+onclick="document.getElementById('loginBox').classList.add('hidden'); document.getElementById('resetBox').classList.remove('hidden')">
+비밀번호를 잊으셨나요?
+</button>
     <div class="message" id="loginMsg"></div>
   </div>
 
@@ -34,7 +37,10 @@ button{width:100%;padding:13px;margin-top:8px;border:0;border-radius:8px;backgro
     <h2>비밀번호 재설정</h2>
     <input id="resetEmail" type="email" placeholder="관리자 이메일">
     <button id="sendReset" type="button">재설정 이메일 보내기</button>
-    <button class="small" id="backLogin" type="button">로그인으로 돌아가기</button>
+    <button id="backLogin" type="button"
+onclick="document.getElementById('resetBox').classList.add('hidden'); document.getElementById('loginBox').classList.remove('hidden')">
+로그인으로 돌아가기
+</button>
     <div class="message" id="resetMsg"></div>
   </div>
 
