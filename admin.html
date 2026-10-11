@@ -106,7 +106,10 @@ $("showReset").onclick=()=>{
   $("resetEmail").value=$("email").value.trim();
   showOnly("resetBox");
 };
-$("backLogin").onclick=()=>showOnly("loginBox");
+
+$("backLogin").onclick=()=>{
+  showOnly("loginBox");
+};
 
 $("sendReset").onclick=async()=>{
   const email=$("resetEmail").value.trim();
