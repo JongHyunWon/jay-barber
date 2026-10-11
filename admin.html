@@ -157,21 +157,45 @@ async function checkAdmin() {
       if (p.length < 6) return msg("passwordMsg", "비밀번호는 6자 이상이어야 합니다.");
       if (p !== $("confirmPassword").value) return msg("passwordMsg", "비밀번호가 서로 다릅니다.");
 
-      $("savePassword").disabled = true;
-      try {
-        const { error } = await sb.auth.updateUser({ password: p });
-        if (error) return msg("passwordMsg", "변경 실패: " + error.message);
+  
+$("savePassword").disabled = true;
 
-        await sb.auth.signOut();
-        $("password").value = "";
-        showOnly("loginBox");
-        msg("loginMsg", "비밀번호가 변경됐습니다. 새 비밀번호로 로그인하세요.");
-      } catch (e) {
-        msg("passwordMsg", "오류: " + e.message);
-      } finally {
-        $("savePassword").disabled = false;
-      }
-    });
+try {
+  const { data: { session }, error: sessionError } =
+    await sb.auth.getSession();
+
+  if (sessionError || !session) {
+    msg(
+      "passwordMsg",
+      "복구 세션이 없습니다. 재설정 이메일의 최신 링크를 다시 열어 주세요."
+    );
+    return;
+  }
+
+  const { error } = await sb.auth.updateUser({
+    password: p
+  });
+
+  if (error) {
+    msg("passwordMsg", "변경 실패: " + error.message);
+    return;
+  }
+
+  await sb.auth.signOut();
+  $("password").value = "";
+  showOnly("loginBox");
+
+  msg(
+    "loginMsg",
+    "비밀번호가 변경됐습니다. 새 비밀번호로 로그인하세요."
+  );
+
+} catch (e) {
+  msg("passwordMsg", "오류: " + e.message);
+} finally {
+  $("savePassword").disabled = false;
+}
+
 
     async function loadBookings() {
       $("bookings").textContent = "예약을 불러오는 중...";
