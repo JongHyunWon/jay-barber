@@ -126,30 +126,45 @@ onclick="document.getElementById('resetBox').classList.add('hidden'); document.g
     });
 
     
+
 async function checkAdmin() {
   const { data: { user }, error } = await sb.auth.getUser();
-  if (error || !user) return;
 
-  // 비밀번호 재설정 화면에서는 관리자 검사 건너뛰기
-  if (!document.getElementById("newPasswordBox").classList.contains("hidden")) {
-    return;
+  if (error || !user) {
+    return msg(
+      "loginMsg",
+      "사용자 확인 실패: " + (error?.message || "로그인 세션이 없습니다.")
+    );
   }
 
   const { data: profile, error: pe } = await sb
     .from("profiles")
-    .select("is_admin")
+    .select("id, email, is_admin")
     .eq("id", user.id)
     .maybeSingle();
 
-  if (pe || profile?.is_admin !== true) {
-    await sb.auth.signOut();
-    showOnly("loginBox");
-    return msg("loginMsg", "관리자 권한이 없습니다. profiles 테이블을 확인하세요.");
+  if (pe) {
+    return msg("loginMsg", "프로필 조회 실패: " + pe.message);
+  }
+
+  if (!profile) {
+    return msg(
+      "loginMsg",
+      "프로필을 찾을 수 없습니다. 로그인 UID: " + user.id
+    );
+  }
+
+  if (profile.is_admin !== true) {
+    return msg(
+      "loginMsg",
+      "관리자 권한이 없습니다. is_admin 값: " + profile.is_admin
+    );
   }
 
   showOnly("adminBox");
   await loadBookings();
 }
+
 
 
     $("savePassword").addEventListener("click", async () => {
