@@ -125,22 +125,32 @@ onclick="document.getElementById('resetBox').classList.add('hidden'); document.g
       }
     });
 
-    async function checkAdmin() {
-      const { data: { user }, error } = await sb.auth.getUser();
-      if (error || !user) return;
+    
+async function checkAdmin() {
+  const { data: { user }, error } = await sb.auth.getUser();
+  if (error || !user) return;
 
-      const { data: profile, error: pe } = await sb
-        .from("profiles").select("is_admin").eq("id", user.id).maybeSingle();
+  // 비밀번호 재설정 화면에서는 관리자 검사 건너뛰기
+  if (!document.getElementById("newPasswordBox").classList.contains("hidden")) {
+    return;
+  }
 
-      if (pe || profile?.is_admin !== true) {
-        await sb.auth.signOut();
-        showOnly("loginBox");
-        return msg("loginMsg", "관리자 권한이 없습니다. profiles 테이블을 확인하세요.");
-      }
+  const { data: profile, error: pe } = await sb
+    .from("profiles")
+    .select("is_admin")
+    .eq("id", user.id)
+    .maybeSingle();
 
-      showOnly("adminBox");
-      await loadBookings();
-    }
+  if (pe || profile?.is_admin !== true) {
+    await sb.auth.signOut();
+    showOnly("loginBox");
+    return msg("loginMsg", "관리자 권한이 없습니다. profiles 테이블을 확인하세요.");
+  }
+
+  showOnly("adminBox");
+  await loadBookings();
+}
+
 
     $("savePassword").addEventListener("click", async () => {
       const p = $("newPassword").value;
@@ -199,12 +209,15 @@ onclick="document.getElementById('resetBox').classList.add('hidden'); document.g
       $("password").value = "";
     });
 
-    sb.auth.onAuthStateChange(event => {
-      if (event === "PASSWORD_RECOVERY") {
-        showOnly("newPasswordBox");
-        msg("passwordMsg", "새 비밀번호를 입력하세요.");
-      }
-    });
+    
+sb.auth.onAuthStateChange((event, session) => {
+  if (event === "PASSWORD_RECOVERY") {
+    showOnly("newPasswordBox");
+    msg("passwordMsg", "새 비밀번호를 입력하세요.");
+    return;
+  }
+});
+
 
     (async () => {
       const { data: { session } } = await sb.auth.getSession();
