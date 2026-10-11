@@ -16,6 +16,7 @@ button:disabled{opacity:.6;cursor:not-allowed}
 .booking{padding:14px;border:1px solid #ddd;border-radius:10px;margin:10px 0}
 .message{margin-top:12px;white-space:pre-wrap}
 .small{background:#777}
+#fatalMsg{color:#c00}
 </style>
 </head>
 <body>
@@ -56,7 +57,15 @@ button:disabled{opacity:.6;cursor:not-allowed}
 </div>
 
 <script>
+window.addEventListener("error", e => {
+  const el = document.getElementById("fatalMsg");
+  if (el) el.textContent = "스크립트 오류: " + e.message;
+});
+
 (() => {
+  const SUPABASE_URL = "https://rupsdtnlkxyesgvnwpor.supabase.co";
+  const SUPABASE_KEY = "sb_publishable_OIcz_R6kDyWs8z_rZN1V_w_-CTf5Fno";
+
   const $ = id => document.getElementById(id);
   const show = id => $(id).classList.remove("hidden");
   const hide = id => $(id).classList.add("hidden");
@@ -67,162 +76,31 @@ button:disabled{opacity:.6;cursor:not-allowed}
     show(id);
   }
 
-  // 재설정 링크로 들어왔는지 (Supabase가 해시를 지우기 전에 먼저 확인)
   let isRecovery = location.hash.includes("type=recovery");
+  let sb = null;
 
-  try {
-    const sb = window.supabase.createClient(
-      "https://rupsdtnlkxyesgvnwpor.supabase.co",
-      "sb_publishable_OIcz_R6kDyWs8z_rZN1V_w_-CTf5Fno"
-    );
+  // 라이브러리 로드 (실패하면 unpkg로 재시도)
+  function loadScript(src) {
+    return new Promise((resolve, reject) => {
+      const s = document.createElement("script");
+      s.src = src;
+      s.onload = resolve;
+      s.onerror = () => reject(new Error("스크립트 로드 실패: " + src));
+      document.head.appendChild(s);
+    });
+  }
 
-    async function loadBookings() {
-      $("bookings").textContent = "예약을 불러오는 중...";
-      const { data, error } = await sb.from("bookings")
-        .select("company,barracks,booking_date,booking_time")
-        .order("booking_date", { ascending: true })
-        .order("booking_time", { ascending: true });
-
-      if (error) {
-        $("bookings").textContent = "예약 조회 실패: " + error.message;
-        return;
-      }
-      if (!data?.length) {
-        $("bookings").textContent = "현재 예약이 없습니다.";
-        return;
-      }
-
-      $("bookings").replaceChildren();
-      data.forEach(b => {
-        const div = document.createElement("div");
-        div.className = "booking";
-        const title = document.createElement("strong");
-        title.textContent = `${b.booking_date} ${String(b.booking_time).slice(0, 5)}`;
-        const detail = document.createElement("p");
-        detail.textContent = `중대: ${b.company} / 생활관: ${b.barracks}`;
-        div.append(title, detail);
-        $("bookings").appendChild(div);
-      });
+  async function getSb() {
+    if (sb) return sb;
+    if (!window.supabase) {
+      try {
+        await loadScript("https://unpkg.com/@supabase/supabase-js@2");
+      } catch (e) { /* 아래에서 처리 */ }
     }
-
-    async function checkAdmin() {
-      const { data: { user }, error } = await sb.auth.getUser();
-
-      if (error || !user) {
-        return msg("loginMsg",
-          "사용자 확인 실패: " + (error?.message || "로그인 세션이 없습니다."));
-      }
-
-      const { data: profile, error: pe } = await sb
-        .from("profiles")
-        .select("id, email, is_admin")
-        .eq("id", user.id)
-        .maybeSingle();
-
-      if (pe) return msg("loginMsg", "프로필 조회 실패: " + pe.message);
-      if (!profile) return msg("loginMsg", "프로필 없음. 로그인 UID: " + user.id);
-      if (profile.is_admin !== true) {
-        return msg("loginMsg",
-          "관리자 권한이 없습니다. is_admin 값: " +
-          JSON.stringify(profile.is_admin) + " / 로그인 UID: " + user.id);
-      }
-
-      showOnly("adminBox");
-      await loadBookings();
+    if (!window.supabase) {
+      throw new Error("Supabase 라이브러리를 불러오지 못했습니다. 인터넷 연결이나 광고 차단 프로그램을 확인하세요.");
     }
-
-    // 비밀번호 잊으셨나요?
-    $("showReset").addEventListener("click", () => {
-      $("resetEmail").value = $("email").value.trim();
-      msg("resetMsg", "");
-      showOnly("resetBox");
-    });
-
-    // 로그인으로 돌아가기
-    $("backLogin").addEventListener("click", () => showOnly("loginBox"));
-
-    // 재설정 이메일 보내기
-    $("sendReset").addEventListener("click", async () => {
-      const email = $("resetEmail").value.trim();
-      if (!email) return msg("resetMsg", "관리자 이메일을 입력하세요.");
-
-      $("sendReset").disabled = true;
-      msg("resetMsg", "처리 중...");
-      try {
-        const { error } = await sb.auth.resetPasswordForEmail(email, {
-          redirectTo: location.origin + location.pathname
-        });
-        msg("resetMsg", error
-          ? "발송 실패: " + error.message
-          : "요청 완료. 이메일을 확인하세요.");
-      } catch (e) {
-        msg("resetMsg", "오류: " + e.message);
-      } finally {
-        $("sendReset").disabled = false;
-      }
-    });
-
-    // 로그인
-    $("loginBtn").addEventListener("click", async () => {
-      const email = $("email").value.trim();
-      const password = $("password").value;
-      if (!email || !password) return msg("loginMsg", "이메일과 비밀번호를 입력하세요.");
-
-      $("loginBtn").disabled = true;
-      msg("loginMsg", "로그인 중...");
-      try {
-        const { error } = await sb.auth.signInWithPassword({ email, password });
-        if (error) return msg("loginMsg", "로그인 실패: " + error.message);
-        msg("loginMsg", "");
-        await checkAdmin();
-      } catch (e) {
-        msg("loginMsg", "오류: " + e.message);
-      } finally {
-        $("loginBtn").disabled = false;
-      }
-    });
-
-    // 새 비밀번호 저장
-    $("savePassword").addEventListener("click", async () => {
-      const p = $("newPassword").value;
-      if (p.length < 6) return msg("passwordMsg", "비밀번호는 6자 이상이어야 합니다.");
-      if (p !== $("confirmPassword").value) return msg("passwordMsg", "비밀번호가 서로 다릅니다.");
-
-      $("savePassword").disabled = true;
-      try {
-        const { data: { session }, error: sessionError } = await sb.auth.getSession();
-        if (sessionError || !session) {
-          msg("passwordMsg", "복구 세션이 없습니다. 재설정 이메일의 최신 링크를 다시 열어 주세요.");
-          return;
-        }
-
-        const { error } = await sb.auth.updateUser({ password: p });
-        if (error) {
-          msg("passwordMsg", "변경 실패: " + error.message);
-          return;
-        }
-
-        isRecovery = false;
-        await sb.auth.signOut();
-        $("password").value = "";
-        $("newPassword").value = "";
-        $("confirmPassword").value = "";
-        showOnly("loginBox");
-        msg("loginMsg", "비밀번호가 변경됐습니다. 새 비밀번호로 로그인하세요.");
-      } catch (e) {
-        msg("passwordMsg", "오류: " + e.message);
-      } finally {
-        $("savePassword").disabled = false;
-      }
-    });
-
-    $("refresh").addEventListener("click", loadBookings);
-
-    $("logout").addEventListener("click", async () => {
-      await sb.auth.signOut();
-      showOnly("loginBox");
-      $("password").value = "";
-    });
+    sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     sb.auth.onAuthStateChange((event) => {
       if (event === "PASSWORD_RECOVERY") {
@@ -231,9 +109,168 @@ button:disabled{opacity:.6;cursor:not-allowed}
         msg("passwordMsg", "새 비밀번호를 입력하세요.");
       }
     });
+    return sb;
+  }
 
-    // 초기 화면 결정
-    (async () => {
+  async function loadBookings() {
+    const sb = await getSb();
+    $("bookings").textContent = "예약을 불러오는 중...";
+    const { data, error } = await sb.from("bookings")
+      .select("company,barracks,booking_date,booking_time")
+      .order("booking_date", { ascending: true })
+      .order("booking_time", { ascending: true });
+
+    if (error) {
+      $("bookings").textContent = "예약 조회 실패: " + error.message;
+      return;
+    }
+    if (!data?.length) {
+      $("bookings").textContent = "현재 예약이 없습니다.";
+      return;
+    }
+
+    $("bookings").replaceChildren();
+    data.forEach(b => {
+      const div = document.createElement("div");
+      div.className = "booking";
+      const title = document.createElement("strong");
+      title.textContent = `${b.booking_date} ${String(b.booking_time).slice(0, 5)}`;
+      const detail = document.createElement("p");
+      detail.textContent = `중대: ${b.company} / 생활관: ${b.barracks}`;
+      div.append(title, detail);
+      $("bookings").appendChild(div);
+    });
+  }
+
+  async function checkAdmin() {
+    const sb = await getSb();
+    const { data: { user }, error } = await sb.auth.getUser();
+
+    if (error || !user) {
+      return msg("loginMsg",
+        "사용자 확인 실패: " + (error?.message || "로그인 세션이 없습니다."));
+    }
+
+    const { data: profile, error: pe } = await sb
+      .from("profiles")
+      .select("id, email, is_admin")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (pe) return msg("loginMsg", "프로필 조회 실패: " + pe.message);
+    if (!profile) return msg("loginMsg", "프로필 없음. 로그인 UID: " + user.id);
+    if (profile.is_admin !== true) {
+      return msg("loginMsg",
+        "관리자 권한이 없습니다. is_admin 값: " +
+        JSON.stringify(profile.is_admin) + " / 로그인 UID: " + user.id);
+    }
+
+    showOnly("adminBox");
+    await loadBookings();
+  }
+
+  // ---- 버튼 연결 (Supabase와 무관하게 먼저 연결) ----
+
+  $("showReset").addEventListener("click", () => {
+    $("resetEmail").value = $("email").value.trim();
+    msg("resetMsg", "");
+    showOnly("resetBox");
+  });
+
+  $("backLogin").addEventListener("click", () => showOnly("loginBox"));
+
+  $("sendReset").addEventListener("click", async () => {
+    const email = $("resetEmail").value.trim();
+    if (!email) return msg("resetMsg", "관리자 이메일을 입력하세요.");
+
+    $("sendReset").disabled = true;
+    msg("resetMsg", "처리 중...");
+    try {
+      const sb = await getSb();
+      const { error } = await sb.auth.resetPasswordForEmail(email, {
+        redirectTo: location.origin + location.pathname
+      });
+      msg("resetMsg", error
+        ? "발송 실패: " + error.message
+        : "요청 완료. 이메일을 확인하세요.");
+    } catch (e) {
+      msg("resetMsg", "오류: " + e.message);
+    } finally {
+      $("sendReset").disabled = false;
+    }
+  });
+
+  $("loginBtn").addEventListener("click", async () => {
+    const email = $("email").value.trim();
+    const password = $("password").value;
+    if (!email || !password) return msg("loginMsg", "이메일과 비밀번호를 입력하세요.");
+
+    $("loginBtn").disabled = true;
+    msg("loginMsg", "로그인 중...");
+    try {
+      const sb = await getSb();
+      const { error } = await sb.auth.signInWithPassword({ email, password });
+      if (error) return msg("loginMsg", "로그인 실패: " + error.message);
+      msg("loginMsg", "");
+      await checkAdmin();
+    } catch (e) {
+      msg("loginMsg", "오류: " + e.message);
+    } finally {
+      $("loginBtn").disabled = false;
+    }
+  });
+
+  $("savePassword").addEventListener("click", async () => {
+    const p = $("newPassword").value;
+    if (p.length < 6) return msg("passwordMsg", "비밀번호는 6자 이상이어야 합니다.");
+    if (p !== $("confirmPassword").value) return msg("passwordMsg", "비밀번호가 서로 다릅니다.");
+
+    $("savePassword").disabled = true;
+    try {
+      const sb = await getSb();
+      const { data: { session }, error: sessionError } = await sb.auth.getSession();
+      if (sessionError || !session) {
+        msg("passwordMsg", "복구 세션이 없습니다. 재설정 이메일의 최신 링크를 다시 열어 주세요.");
+        return;
+      }
+
+      const { error } = await sb.auth.updateUser({ password: p });
+      if (error) {
+        msg("passwordMsg", "변경 실패: " + error.message);
+        return;
+      }
+
+      isRecovery = false;
+      await sb.auth.signOut();
+      $("password").value = "";
+      $("newPassword").value = "";
+      $("confirmPassword").value = "";
+      showOnly("loginBox");
+      msg("loginMsg", "비밀번호가 변경됐습니다. 새 비밀번호로 로그인하세요.");
+    } catch (e) {
+      msg("passwordMsg", "오류: " + e.message);
+    } finally {
+      $("savePassword").disabled = false;
+    }
+  });
+
+  $("refresh").addEventListener("click", () => {
+    loadBookings().catch(e => { $("bookings").textContent = "오류: " + e.message; });
+  });
+
+  $("logout").addEventListener("click", async () => {
+    try {
+      const sb = await getSb();
+      await sb.auth.signOut();
+    } catch (e) { /* 무시 */ }
+    showOnly("loginBox");
+    $("password").value = "";
+  });
+
+  // ---- 초기 화면 결정 ----
+  (async () => {
+    try {
+      const sb = await getSb();
       if (isRecovery) {
         showOnly("newPasswordBox");
         msg("passwordMsg", "새 비밀번호를 입력하세요.");
@@ -241,11 +278,10 @@ button:disabled{opacity:.6;cursor:not-allowed}
       }
       const { data: { session } } = await sb.auth.getSession();
       if (session) await checkAdmin();
-    })();
-
-  } catch (e) {
-    $("fatalMsg").textContent = "페이지 오류: " + e.message;
-  }
+    } catch (e) {
+      $("fatalMsg").textContent = "초기화 오류: " + e.message;
+    }
+  })();
 })();
 </script>
 </body>
