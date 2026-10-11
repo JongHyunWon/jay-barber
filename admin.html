@@ -154,12 +154,23 @@ async function checkAdmin() {
     );
   }
 
-  if (profile.is_admin !== true) {
-    return msg(
-      "loginMsg",
-      "관리자 권한이 없습니다. is_admin 값: " + profile.is_admin
-    );
-  }
+if (pe) {
+  return msg("loginMsg", "DB 조회 오류: " + pe.message);
+}
+
+if (!profile) {
+  return msg("loginMsg", "프로필 없음. 로그인 UID: " + user.id);
+}
+
+if (profile.is_admin !== true) {
+  return msg(
+    "loginMsg",
+    "관리자 권한이 없습니다. is_admin 값: " +
+    JSON.stringify(profile.is_admin) +
+    " / 로그인 UID: " + user.id
+  );
+}
+
 
   showOnly("adminBox");
   await loadBookings();
