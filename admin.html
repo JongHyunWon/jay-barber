@@ -6,36 +6,65 @@
 <title>JAY BARBER 관리자</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
-body{font-family:Arial,sans-serif;background:#f5f5f5;margin:0;color:#111}
-.container{max-width:700px;margin:35px auto;padding:20px}
-.card{background:white;padding:24px;border-radius:16px;margin-bottom:16px}
-input{width:100%;box-sizing:border-box;padding:13px;margin:8px 0;border:1px solid #ddd;border-radius:8px}
-button{width:100%;padding:13px;margin-top:8px;border:0;border-radius:8px;background:#111;color:white;cursor:pointer}
-button:disabled{opacity:.6;cursor:not-allowed}
+:root{--bg:#f3f1ec;--card:#fff;--ink:#1c1c1a;--mute:#8a877f;--line:#e3dfd6;--ok:#1f6f4a;--okbg:#e4f2ea;--full:#b3361f;--fullbg:#f9e3de;--sel:#1c1c1a}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Pretendard","Apple SD Gothic Neo","Malgun Gothic",sans-serif;line-height:1.5}
+.container{max-width:620px;margin:0 auto;padding:24px 16px 60px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:14px}
+h1{margin:8px 0}h2{margin:0 0 12px;font-size:18px}h3{margin:0 0 10px;font-size:16px}
+input{width:100%;padding:13px;margin:8px 0;border:1px solid var(--line);border-radius:10px;font:inherit}
+button{font:inherit;cursor:pointer}
+.btn{width:100%;padding:13px;margin-top:8px;border:0;border-radius:10px;background:var(--sel);color:#fff}
+.btn.gray{background:#777}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.mini{padding:9px 12px;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;font-size:13px}
+.mini.danger{color:var(--full);border-color:var(--full)}
 .hidden{display:none!important}
-.booking{padding:14px;border:1px solid #ddd;border-radius:10px;margin:10px 0}
-.message{margin-top:12px;white-space:pre-wrap}
-.small{background:#777}
-#fatalMsg{color:#c00}
+.message{margin-top:10px;font-size:14px;white-space:pre-wrap}
+#fatalMsg{color:var(--full)}
+.mh{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.nav{width:40px;height:40px;border:1px solid var(--line);background:var(--card);border-radius:10px;font-size:18px}
+.nav:disabled{opacity:.3}
+.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.dow{text-align:center;font-size:12px;color:var(--mute);padding:4px 0}
+.dow:first-child{color:var(--full)}
+.day{aspect-ratio:1/1.05;border:1px solid transparent;border-radius:10px;background:none;color:var(--ink);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+.day small{font-size:10px;color:var(--mute)}
+.day.has{background:var(--okbg);border-color:var(--ok);font-weight:700}
+.day.has small{color:var(--ok)}
+.day.off{opacity:.3;cursor:not-allowed}
+.day.sel{background:var(--sel);color:#fff;border-color:var(--sel)}
+.day.sel small{color:#fff}
+.legend{font-size:12px;color:var(--mute);margin-top:10px}
+.chips{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px}
+.chip{padding:11px 2px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--mute);display:flex;flex-direction:column;align-items:center;font-weight:700}
+.chip small{font-size:10px;font-weight:400}
+.chip.open{background:var(--okbg);border-color:var(--ok);color:var(--ink)}
+.chip.open small{color:var(--ok)}
+.chip.booked{background:var(--fullbg);border-color:var(--full);color:var(--full)}
+.booking{padding:12px;border:1px solid var(--line);border-radius:10px;margin:8px 0;display:flex;justify-content:space-between;align-items:center;gap:10px}
+.booking p{margin:2px 0 0;font-size:14px;color:var(--mute)}
 </style>
 </head>
 <body>
 <div class="container">
+
   <div class="card" id="loginBox">
     <h1>JAY BARBER</h1>
     <h3>관리자 로그인</h3>
     <input id="email" type="email" placeholder="관리자 이메일">
     <input id="password" type="password" placeholder="비밀번호">
-    <button id="loginBtn" type="button">로그인</button>
-    <button id="showReset" type="button">비밀번호를 잊으셨나요?</button>
+    <button class="btn" id="loginBtn" type="button">로그인</button>
+    <button class="btn gray" id="showReset" type="button">비밀번호를 잊으셨나요?</button>
     <div class="message" id="loginMsg"></div>
   </div>
 
   <div class="card hidden" id="resetBox">
     <h2>비밀번호 재설정</h2>
     <input id="resetEmail" type="email" placeholder="관리자 이메일">
-    <button id="sendReset" type="button">재설정 이메일 보내기</button>
-    <button id="backLogin" type="button">로그인으로 돌아가기</button>
+    <button class="btn" id="sendReset" type="button">재설정 이메일 보내기</button>
+    <button class="btn gray" id="backLogin" type="button">로그인으로 돌아가기</button>
     <div class="message" id="resetMsg"></div>
   </div>
 
@@ -43,16 +72,50 @@ button:disabled{opacity:.6;cursor:not-allowed}
     <h2>새 비밀번호 설정</h2>
     <input id="newPassword" type="password" placeholder="새 비밀번호 (6자 이상)">
     <input id="confirmPassword" type="password" placeholder="새 비밀번호 확인">
-    <button id="savePassword" type="button">새 비밀번호 저장</button>
+    <button class="btn" id="savePassword" type="button">새 비밀번호 저장</button>
     <div class="message" id="passwordMsg"></div>
   </div>
 
-  <div class="card hidden" id="adminBox">
-    <h2>예약 관리</h2>
-    <button id="refresh" type="button">예약 새로고침</button>
-    <button class="small" id="logout" type="button">로그아웃</button>
-    <div id="bookings">예약을 불러오는 중...</div>
+  <div class="hidden" id="adminBox">
+    <div class="card">
+      <h2>예약 가능한 시간 정하기</h2>
+      <div class="mh">
+        <button class="nav" id="prev" type="button">‹</button>
+        <b id="monthLabel"></b>
+        <button class="nav" id="next" type="button">›</button>
+      </div>
+      <div class="grid" id="dows"></div>
+      <div class="grid" id="days"></div>
+      <div class="legend">날짜 아래 숫자 = 예약된 칸 / 열어 둔 칸 (초록색 = 손님에게 열린 날)</div>
+    </div>
+
+    <div class="card hidden" id="dayCard">
+      <h3 id="dayTitle"></h3>
+      <div class="legend" style="margin:0 0 4px">시간을 누르면 열림/닫힘이 바뀌어요. 빨간 칸은 예약된 시간이에요.</div>
+      <div class="row">
+        <button class="mini" id="qAm" type="button">오전 열기</button>
+        <button class="mini" id="qPm" type="button">오후 열기</button>
+        <button class="mini" id="qAll" type="button">하루 전체 열기</button>
+        <button class="mini danger" id="qNone" type="button">모두 닫기</button>
+      </div>
+      <div class="row">
+        <button class="mini" id="qCopy" type="button">이 설정을 다음 4주 같은 요일에 복사</button>
+      </div>
+      <div class="chips" id="chips"></div>
+      <div class="message" id="dayMsg"></div>
+    </div>
+
+    <div class="card">
+      <h2>예약 목록</h2>
+      <div id="bookings">불러오는 중...</div>
+    </div>
+
+    <div class="card">
+      <button class="btn" id="refresh" type="button">새로고침</button>
+      <button class="btn gray" id="logout" type="button">로그아웃</button>
+    </div>
   </div>
+
   <div class="message" id="fatalMsg"></div>
 </div>
 
@@ -66,43 +129,56 @@ window.addEventListener("error", e => {
   const SUPABASE_URL = "https://rupsdtnlkxyesgvnwpor.supabase.co";
   const SUPABASE_KEY = "sb_publishable_OIcz_R6kDyWs8z_rZN1V_w_-CTf5Fno";
 
+  // ===== 설정: 시간 칸 (30분 단위, 09:00 ~ 20:30) =====
+  const START_MIN = 9 * 60, END_MIN = 21 * 60, STEP = 30;
+  const DAYS_AHEAD = 90; // 오늘부터 며칠 뒤까지 설정 가능
+  // ====================================================
+
   const $ = id => document.getElementById(id);
+  const pad = n => String(n).padStart(2, "0");
+  const fmt = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+  const DOW = ["일","월","화","수","목","금","토"];
   const show = id => $(id).classList.remove("hidden");
   const hide = id => $(id).classList.add("hidden");
   const msg = (id, text) => { $(id).textContent = text; };
-
   function showOnly(id) {
-    ["loginBox", "resetBox", "newPasswordBox", "adminBox"].forEach(hide);
+    ["loginBox","resetBox","newPasswordBox","adminBox"].forEach(hide);
     show(id);
   }
+  function el(tag, cls, text) {
+    const e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text !== undefined) e.textContent = text;
+    return e;
+  }
+
+  const TIMES = [];
+  for (let m = START_MIN; m < END_MIN; m += STEP) TIMES.push(pad(Math.floor(m/60)) + ":" + pad(m % 60));
+
+  const today = new Date(); today.setHours(0,0,0,0);
+  const last = new Date(today); last.setDate(last.getDate() + DAYS_AHEAD);
+  let view = new Date(today.getFullYear(), today.getMonth(), 1);
+  let selDate = null, busy = false;
+  let openMap = {}, bookMap = {}, bookList = [], bookCount = {};
 
   let isRecovery = location.hash.includes("type=recovery");
   let sb = null;
 
-  // 라이브러리 로드 (실패하면 unpkg로 재시도)
   function loadScript(src) {
     return new Promise((resolve, reject) => {
       const s = document.createElement("script");
-      s.src = src;
-      s.onload = resolve;
-      s.onerror = () => reject(new Error("스크립트 로드 실패: " + src));
+      s.src = src; s.onload = resolve;
+      s.onerror = () => reject(new Error("스크립트 로드 실패"));
       document.head.appendChild(s);
     });
   }
 
   async function getSb() {
     if (sb) return sb;
-    if (!window.supabase) {
-      try {
-        await loadScript("https://unpkg.com/@supabase/supabase-js@2");
-      } catch (e) { /* 아래에서 처리 */ }
-    }
-    if (!window.supabase) {
-      throw new Error("Supabase 라이브러리를 불러오지 못했습니다. 인터넷 연결이나 광고 차단 프로그램을 확인하세요.");
-    }
+    if (!window.supabase) { try { await loadScript("https://unpkg.com/@supabase/supabase-js@2"); } catch (e) {} }
+    if (!window.supabase) throw new Error("Supabase 라이브러리를 불러오지 못했습니다. 인터넷 연결이나 광고 차단을 확인하세요.");
     sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-    sb.auth.onAuthStateChange((event) => {
+    sb.auth.onAuthStateChange(event => {
       if (event === "PASSWORD_RECOVERY") {
         isRecovery = true;
         showOnly("newPasswordBox");
@@ -112,175 +188,262 @@ window.addEventListener("error", e => {
     return sb;
   }
 
-  async function loadBookings() {
+  async function fetchAll(build) {
+    let all = [], from = 0;
+    while (true) {
+      const { data, error } = await build().range(from, from + 999);
+      if (error) throw error;
+      all = all.concat(data);
+      if (data.length < 1000) break;
+      from += 1000;
+    }
+    return all;
+  }
+
+  // ---------- 데이터 ----------
+  async function loadAll() {
     const sb = await getSb();
-    $("bookings").textContent = "예약을 불러오는 중...";
-    const { data, error } = await sb.from("bookings")
-      .select("company,barracks,booking_date,booking_time")
-      .order("booking_date", { ascending: true })
-      .order("booking_time", { ascending: true });
+    const slots = await fetchAll(() => sb.from("open_slots")
+      .select("id,slot_date,slot_time").gte("slot_date", fmt(today)).lte("slot_date", fmt(last)).order("id"));
+    openMap = {};
+    slots.forEach(s => { (openMap[s.slot_date] = openMap[s.slot_date] || new Set()).add(String(s.slot_time).slice(0,5)); });
 
-    if (error) {
-      $("bookings").textContent = "예약 조회 실패: " + error.message;
-      return;
-    }
-    if (!data?.length) {
-      $("bookings").textContent = "현재 예약이 없습니다.";
-      return;
-    }
+    const bks = await fetchAll(() => sb.from("bookings")
+      .select("id,company,barracks,booking_date,booking_time").gte("booking_date", fmt(today)).order("id"));
+    bks.sort((a, b) => (a.booking_date + a.booking_time).localeCompare(b.booking_date + b.booking_time));
+    bookList = bks; bookMap = {}; bookCount = {};
+    bks.forEach(b => {
+      bookMap[b.booking_date + " " + String(b.booking_time).slice(0,5)] = b;
+      bookCount[b.booking_date] = (bookCount[b.booking_date] || 0) + 1;
+    });
+    renderCalendar(); renderDay(); renderBookings();
+  }
 
-    $("bookings").replaceChildren();
-    data.forEach(b => {
-      const div = document.createElement("div");
-      div.className = "booking";
-      const title = document.createElement("strong");
-      title.textContent = `${b.booking_date} ${String(b.booking_time).slice(0, 5)}`;
-      const detail = document.createElement("p");
-      detail.textContent = `중대: ${b.company} / 생활관: ${b.barracks}`;
-      div.append(title, detail);
-      $("bookings").appendChild(div);
+  // ---------- 화면 ----------
+  function renderCalendar() {
+    $("monthLabel").textContent = `${view.getFullYear()}년 ${view.getMonth()+1}월`;
+    $("prev").disabled = view <= new Date(today.getFullYear(), today.getMonth(), 1);
+    $("next").disabled = new Date(view.getFullYear(), view.getMonth()+1, 1) > last;
+    const first = view.getDay();
+    const count = new Date(view.getFullYear(), view.getMonth()+1, 0).getDate();
+    const box = $("days"); box.replaceChildren();
+    for (let i = 0; i < first; i++) box.appendChild(el("div"));
+    for (let n = 1; n <= count; n++) {
+      const d = new Date(view.getFullYear(), view.getMonth(), n);
+      const ds = fmt(d);
+      const out = d < today || d > last;
+      const openN = openMap[ds] ? openMap[ds].size : 0;
+      let cls = "day" + (out ? " off" : "") + (openN > 0 ? " has" : "") + (ds === selDate ? " sel" : "");
+      const b = el("button", cls, String(n));
+      b.type = "button"; b.disabled = out; b.dataset.date = ds;
+      if (openN > 0) b.appendChild(el("small", "", `${bookCount[ds] || 0}/${openN}`));
+      box.appendChild(b);
+    }
+  }
+
+  function renderDay() {
+    if (!selDate) { hide("dayCard"); return; }
+    show("dayCard");
+    const d = new Date(selDate + "T00:00:00");
+    $("dayTitle").textContent = `${d.getMonth()+1}월 ${d.getDate()}일 (${DOW[d.getDay()]}) 가능한 시간`;
+    const open = openMap[selDate] || new Set();
+    const chips = $("chips"); chips.replaceChildren();
+    TIMES.forEach(t => {
+      const bk = bookMap[selDate + " " + t];
+      let cls = "chip" + (bk ? " booked" : open.has(t) ? " open" : "");
+      const c = el("button", cls, t);
+      c.type = "button"; c.dataset.time = t;
+      c.appendChild(el("small", "", bk ? "예약됨" : open.has(t) ? "열림" : "닫힘"));
+      chips.appendChild(c);
     });
   }
 
+  function renderBookings() {
+    const box = $("bookings"); box.replaceChildren();
+    if (!bookList.length) { box.textContent = "예정된 예약이 없습니다."; return; }
+    bookList.forEach(b => {
+      const row = el("div", "booking");
+      const info = el("div");
+      info.appendChild(el("strong", "", `${b.booking_date} ${String(b.booking_time).slice(0,5)}`));
+      info.appendChild(el("p", "", `중대: ${b.company} / 생활관: ${b.barracks}`));
+      const cancel = el("button", "mini danger", "예약 취소");
+      cancel.type = "button"; cancel.dataset.cancel = b.id;
+      row.append(info, cancel);
+      box.appendChild(row);
+    });
+  }
+
+  // ---------- 시간 열기/닫기 ----------
+  async function applyDay(date, desired) {
+    if (busy) return;
+    busy = true; msg("dayMsg", "저장 중...");
+    try {
+      const sb = await getSb();
+      const open = openMap[date] || new Set();
+      const toAdd = [...desired].filter(t => !open.has(t));
+      const toRemove = [...open].filter(t => !desired.has(t) && !bookMap[date + " " + t]);
+      if (toAdd.length) {
+        const { error } = await sb.from("open_slots").insert(toAdd.map(t => ({ slot_date: date, slot_time: t + ":00" })));
+        if (error) throw error;
+      }
+      if (toRemove.length) {
+        const { error } = await sb.from("open_slots").delete().eq("slot_date", date).in("slot_time", toRemove.map(t => t + ":00"));
+        if (error) throw error;
+      }
+      await loadAll();
+      msg("dayMsg", "저장됐습니다.");
+    } catch (e) {
+      msg("dayMsg", "저장 실패: " + e.message);
+    } finally { busy = false; }
+  }
+
+  const currentOpen = () => new Set(openMap[selDate] || []);
+
+  $("days").addEventListener("click", e => {
+    const b = e.target.closest("[data-date]"); if (!b || b.disabled) return;
+    selDate = b.dataset.date; msg("dayMsg", "");
+    renderCalendar(); renderDay();
+  });
+
+  $("chips").addEventListener("click", e => {
+    const c = e.target.closest("[data-time]"); if (!c) return;
+    const t = c.dataset.time;
+    const bk = bookMap[selDate + " " + t];
+    if (bk) return msg("dayMsg", `${t} 예약: ${bk.company} / ${bk.barracks}\n취소하려면 아래 예약 목록에서 취소하세요.`);
+    const desired = currentOpen();
+    desired.has(t) ? desired.delete(t) : desired.add(t);
+    applyDay(selDate, desired);
+  });
+
+  $("qAm").addEventListener("click", () => {
+    const s = currentOpen(); TIMES.filter(t => t < "12:00").forEach(t => s.add(t)); applyDay(selDate, s);
+  });
+  $("qPm").addEventListener("click", () => {
+    const s = currentOpen(); TIMES.filter(t => t >= "12:00").forEach(t => s.add(t)); applyDay(selDate, s);
+  });
+  $("qAll").addEventListener("click", () => applyDay(selDate, new Set(TIMES)));
+  $("qNone").addEventListener("click", () => applyDay(selDate, new Set()));
+
+  $("qCopy").addEventListener("click", async () => {
+    const times = [...currentOpen()];
+    if (!times.length) return msg("dayMsg", "열려 있는 시간이 없어서 복사할 게 없습니다.");
+    if (busy) return;
+    busy = true; msg("dayMsg", "복사 중...");
+    try {
+      const sb = await getSb();
+      const rows = [];
+      for (let k = 1; k <= 4; k++) {
+        const d = new Date(selDate + "T00:00:00"); d.setDate(d.getDate() + 7 * k);
+        if (d > last) continue;
+        times.forEach(t => rows.push({ slot_date: fmt(d), slot_time: t + ":00" }));
+      }
+      const { error } = await sb.from("open_slots").upsert(rows, { onConflict: "slot_date,slot_time", ignoreDuplicates: true });
+      if (error) throw error;
+      await loadAll();
+      msg("dayMsg", "다음 4주 같은 요일에 복사했습니다.");
+    } catch (e) {
+      msg("dayMsg", "복사 실패: " + e.message);
+    } finally { busy = false; }
+  });
+
+  $("bookings").addEventListener("click", async e => {
+    const b = e.target.closest("[data-cancel]"); if (!b) return;
+    if (!confirm("이 예약을 취소할까요?")) return;
+    try {
+      const sb = await getSb();
+      const { error } = await sb.from("bookings").delete().eq("id", Number(b.dataset.cancel));
+      if (error) throw error;
+      await loadAll();
+    } catch (err) { alert("취소 실패: " + err.message); }
+  });
+
+  $("prev").addEventListener("click", () => { view = new Date(view.getFullYear(), view.getMonth()-1, 1); renderCalendar(); });
+  $("next").addEventListener("click", () => { view = new Date(view.getFullYear(), view.getMonth()+1, 1); renderCalendar(); });
+  $("refresh").addEventListener("click", () => loadAll().catch(e => { $("bookings").textContent = "오류: " + e.message; }));
+
+  $("dows").innerHTML = DOW.map(d => `<div class="dow">${d}</div>`).join("");
+
+  // ---------- 로그인 ----------
   async function checkAdmin() {
     const sb = await getSb();
     const { data: { user }, error } = await sb.auth.getUser();
+    if (error || !user) return msg("loginMsg", "사용자 확인 실패: " + (error?.message || "로그인 세션이 없습니다."));
 
-    if (error || !user) {
-      return msg("loginMsg",
-        "사용자 확인 실패: " + (error?.message || "로그인 세션이 없습니다."));
-    }
-
-    const { data: profile, error: pe } = await sb
-      .from("profiles")
-      .select("id, email, is_admin")
-      .eq("id", user.id)
-      .maybeSingle();
-
+    const { data: profile, error: pe } = await sb.from("profiles")
+      .select("id, email, is_admin").eq("id", user.id).maybeSingle();
     if (pe) return msg("loginMsg", "프로필 조회 실패: " + pe.message);
     if (!profile) return msg("loginMsg", "프로필 없음. 로그인 UID: " + user.id);
-    if (profile.is_admin !== true) {
-      return msg("loginMsg",
-        "관리자 권한이 없습니다. is_admin 값: " +
-        JSON.stringify(profile.is_admin) + " / 로그인 UID: " + user.id);
-    }
+    if (profile.is_admin !== true) return msg("loginMsg", "관리자 권한이 없습니다.");
 
     showOnly("adminBox");
-    await loadBookings();
+    try { await loadAll(); }
+    catch (e) { $("bookings").textContent = "불러오기 실패: " + e.message; }
   }
-
-  // ---- 버튼 연결 (Supabase와 무관하게 먼저 연결) ----
 
   $("showReset").addEventListener("click", () => {
     $("resetEmail").value = $("email").value.trim();
-    msg("resetMsg", "");
-    showOnly("resetBox");
+    msg("resetMsg", ""); showOnly("resetBox");
   });
-
   $("backLogin").addEventListener("click", () => showOnly("loginBox"));
 
   $("sendReset").addEventListener("click", async () => {
     const email = $("resetEmail").value.trim();
     if (!email) return msg("resetMsg", "관리자 이메일을 입력하세요.");
-
-    $("sendReset").disabled = true;
-    msg("resetMsg", "처리 중...");
+    $("sendReset").disabled = true; msg("resetMsg", "처리 중...");
     try {
       const sb = await getSb();
-      const { error } = await sb.auth.resetPasswordForEmail(email, {
-        redirectTo: location.origin + location.pathname
-      });
-      msg("resetMsg", error
-        ? "발송 실패: " + error.message
-        : "요청 완료. 이메일을 확인하세요.");
-    } catch (e) {
-      msg("resetMsg", "오류: " + e.message);
-    } finally {
-      $("sendReset").disabled = false;
-    }
+      const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname });
+      msg("resetMsg", error ? "발송 실패: " + error.message : "요청 완료. 이메일을 확인하세요.");
+    } catch (e) { msg("resetMsg", "오류: " + e.message); }
+    finally { $("sendReset").disabled = false; }
   });
 
   $("loginBtn").addEventListener("click", async () => {
-    const email = $("email").value.trim();
-    const password = $("password").value;
+    const email = $("email").value.trim(), password = $("password").value;
     if (!email || !password) return msg("loginMsg", "이메일과 비밀번호를 입력하세요.");
-
-    $("loginBtn").disabled = true;
-    msg("loginMsg", "로그인 중...");
+    $("loginBtn").disabled = true; msg("loginMsg", "로그인 중...");
     try {
       const sb = await getSb();
       const { error } = await sb.auth.signInWithPassword({ email, password });
       if (error) return msg("loginMsg", "로그인 실패: " + error.message);
       msg("loginMsg", "");
       await checkAdmin();
-    } catch (e) {
-      msg("loginMsg", "오류: " + e.message);
-    } finally {
-      $("loginBtn").disabled = false;
-    }
+    } catch (e) { msg("loginMsg", "오류: " + e.message); }
+    finally { $("loginBtn").disabled = false; }
   });
 
   $("savePassword").addEventListener("click", async () => {
     const p = $("newPassword").value;
     if (p.length < 6) return msg("passwordMsg", "비밀번호는 6자 이상이어야 합니다.");
     if (p !== $("confirmPassword").value) return msg("passwordMsg", "비밀번호가 서로 다릅니다.");
-
     $("savePassword").disabled = true;
     try {
       const sb = await getSb();
-      const { data: { session }, error: sessionError } = await sb.auth.getSession();
-      if (sessionError || !session) {
-        msg("passwordMsg", "복구 세션이 없습니다. 재설정 이메일의 최신 링크를 다시 열어 주세요.");
-        return;
-      }
-
+      const { data: { session } } = await sb.auth.getSession();
+      if (!session) return msg("passwordMsg", "복구 세션이 없습니다. 재설정 이메일의 최신 링크를 다시 열어 주세요.");
       const { error } = await sb.auth.updateUser({ password: p });
-      if (error) {
-        msg("passwordMsg", "변경 실패: " + error.message);
-        return;
-      }
-
+      if (error) return msg("passwordMsg", "변경 실패: " + error.message);
       isRecovery = false;
       await sb.auth.signOut();
-      $("password").value = "";
-      $("newPassword").value = "";
-      $("confirmPassword").value = "";
+      $("password").value = ""; $("newPassword").value = ""; $("confirmPassword").value = "";
       showOnly("loginBox");
       msg("loginMsg", "비밀번호가 변경됐습니다. 새 비밀번호로 로그인하세요.");
-    } catch (e) {
-      msg("passwordMsg", "오류: " + e.message);
-    } finally {
-      $("savePassword").disabled = false;
-    }
-  });
-
-  $("refresh").addEventListener("click", () => {
-    loadBookings().catch(e => { $("bookings").textContent = "오류: " + e.message; });
+    } catch (e) { msg("passwordMsg", "오류: " + e.message); }
+    finally { $("savePassword").disabled = false; }
   });
 
   $("logout").addEventListener("click", async () => {
-    try {
-      const sb = await getSb();
-      await sb.auth.signOut();
-    } catch (e) { /* 무시 */ }
-    showOnly("loginBox");
-    $("password").value = "";
+    try { const sb = await getSb(); await sb.auth.signOut(); } catch (e) {}
+    showOnly("loginBox"); $("password").value = "";
   });
 
-  // ---- 초기 화면 결정 ----
   (async () => {
     try {
       const sb = await getSb();
-      if (isRecovery) {
-        showOnly("newPasswordBox");
-        msg("passwordMsg", "새 비밀번호를 입력하세요.");
-        return;
-      }
+      if (isRecovery) { showOnly("newPasswordBox"); msg("passwordMsg", "새 비밀번호를 입력하세요."); return; }
       const { data: { session } } = await sb.auth.getSession();
       if (session) await checkAdmin();
-    } catch (e) {
-      $("fatalMsg").textContent = "초기화 오류: " + e.message;
-    }
+    } catch (e) { $("fatalMsg").textContent = "초기화 오류: " + e.message; }
   })();
 })();
 </script>
