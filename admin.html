@@ -265,7 +265,7 @@ window.addEventListener("error", e => {
       const row = el("div", "booking");
       const info = el("div");
       info.appendChild(el("strong", "", `${b.booking_date} ${String(b.booking_time).slice(0,5)}`));
-      info.appendChild(el("p", "", `중대: ${b.company} / 생활관: ${b.barracks}`));
+      info.appendChild(el("p", "", `${b.name || "(이름 없음)"} / 중대: ${b.company} / 생활관: ${b.barracks}`));
       const cancel = el("button", "mini danger", "예약 취소");
       cancel.type = "button"; cancel.dataset.cancel = b.id;
       row.append(info, cancel);
