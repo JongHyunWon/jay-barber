@@ -48,17 +48,18 @@ select,input{width:100%;padding:13px;border:1px solid var(--line);border-radius:
 .summary{background:var(--okbg);border-radius:10px;padding:12px;font-weight:700;margin-bottom:4px}
 .msg{margin-top:12px;font-size:14px;white-space:pre-wrap}
 .msg.err{color:var(--full)}.msg.good{color:var(--ok);font-weight:700}
+.notice{background:var(--fullbg);color:var(--full);border-radius:10px;padding:12px;font-size:14px;margin-bottom:12px}
 .hidden{display:none!important}
-.hint{color:var(--mute);font-size:14px;margin:0}
 </style>
 </head>
 <body>
 <div class="wrap">
   <h1>JAY BARBER</h1>
-  <p class="sub">날짜와 시간을 선택해 예약하세요.</p>
+  <p class="sub">초록색으로 표시된 날짜와 시간만 예약할 수 있어요.</p>
 
   <div class="card">
     <p class="step">1. 날짜 선택</p>
+    <div class="notice hidden" id="notice"></div>
     <div class="mh">
       <button class="nav" id="prev" type="button" aria-label="이전 달">‹</button>
       <b id="monthLabel"></b>
@@ -69,7 +70,7 @@ select,input{width:100%;padding:13px;border:1px solid var(--line);border-radius:
     <div class="legend">
       <span><i style="background:var(--okbg);border:1px solid var(--ok)"></i>예약 가능</span>
       <span><i style="background:var(--fullbg)"></i>마감</span>
-      <span><i style="background:var(--line)"></i>휴무·지난 날</span>
+      <span><i style="background:var(--line)"></i>예약 불가</span>
     </div>
   </div>
 
@@ -96,11 +97,7 @@ select,input{width:100%;padding:13px;border:1px solid var(--line);border-radius:
 
 <script>
 (() => {
-  // ===== 설정: 여기만 바꾸면 됩니다 =====
-  const OPEN_HOURS = ["10:00","11:00","12:00","13:00","14:00","15:00","16:00"]; // 예약 시간대
-  const CLOSED_WEEKDAYS = [0];   // 휴무 요일 (0=일, 1=월, ... 6=토)
-  const DAYS_AHEAD = 45;         // 오늘부터 며칠 뒤까지 예약 가능
-  // ====================================
+  const DAYS_AHEAD = 60;   // 오늘부터 며칠 뒤까지 보여줄지
 
   const sb = window.supabase.createClient(
     "https://rupsdtnlkxyesgvnwpor.supabase.co",
@@ -114,34 +111,40 @@ select,input{width:100%;padding:13px;border:1px solid var(--line);border-radius:
   const today = new Date(); today.setHours(0,0,0,0);
   const last = new Date(today); last.setDate(last.getDate() + DAYS_AHEAD);
   let view = new Date(today.getFullYear(), today.getMonth(), 1);
-  let booked = {};
+  let slots = {};   // { "2026-11-20": [{t:"10:00", booked:false}, ...] }
   let selDate = null, selTime = null;
 
   $("dows").innerHTML = DOW.map(d => `<div class="dow">${d}</div>`).join("");
 
-  async function loadBooked() {
-    const start = fmt(today), end = fmt(last);
-    const { data, error } = await sb.rpc("get_booked_slots", { start_date: start, end_date: end });
-    if (error) { console.error(error); return false; }
-    booked = {};
-    (data || []).forEach(r => {
-      const d = r.booking_date, t = String(r.booking_time).slice(0,5);
-      (booked[d] = booked[d] || []).push(t);
+  async function loadSlots() {
+    const all = [];
+    let from = 0;
+    while (true) {
+      const { data, error } = await sb
+        .rpc("get_open_slots", { start_date: fmt(today), end_date: fmt(last) })
+        .range(from, from + 999);
+      if (error) { console.error(error); return false; }
+      all.push(...data);
+      if (data.length < 1000) break;
+      from += 1000;
+    }
+    slots = {};
+    all.forEach(r => {
+      (slots[r.slot_date] = slots[r.slot_date] || []).push({
+        t: String(r.slot_time).slice(0, 5), booked: r.is_booked
+      });
     });
     return true;
   }
 
-  function slotPassed(dateStr, t) {
+  function passed(dateStr, t) {
     if (dateStr !== fmt(new Date())) return false;
     const now = new Date();
     const [h, m] = t.split(":").map(Number);
     return h * 60 + m <= now.getHours() * 60 + now.getMinutes();
   }
 
-  function freeSlots(dateStr) {
-    const taken = booked[dateStr] || [];
-    return OPEN_HOURS.filter(t => !taken.includes(t) && !slotPassed(dateStr, t));
-  }
+  const freeCount = ds => (slots[ds] || []).filter(s => !s.booked && !passed(ds, s.t)).length;
 
   function renderCalendar() {
     $("monthLabel").textContent = `${view.getFullYear()}년 ${view.getMonth()+1}월`;
@@ -155,14 +158,13 @@ select,input{width:100%;padding:13px;border:1px solid var(--line);border-radius:
     for (let n = 1; n <= count; n++) {
       const d = new Date(view.getFullYear(), view.getMonth(), n);
       const ds = fmt(d);
-      const closed = CLOSED_WEEKDAYS.includes(d.getDay());
-      const outOfRange = d < today || d > last;
       const sun = d.getDay() === 0 ? " sun" : "";
-      if (closed || outOfRange) {
-        html += `<button class="day off${sun}" disabled>${n}<small>${closed && !outOfRange ? "휴무" : ""}</small></button>`;
+      const hasSlots = (slots[ds] || []).length > 0;
+      if (d < today || d > last || !hasSlots) {
+        html += `<button class="day off${sun}" disabled>${n}</button>`;
         continue;
       }
-      const free = freeSlots(ds).length;
+      const free = freeCount(ds);
       const sel = ds === selDate ? " sel" : "";
       if (free === 0) {
         html += `<button class="day full${sun}" disabled>${n}<small>마감</small></button>`;
@@ -174,13 +176,12 @@ select,input{width:100%;padding:13px;border:1px solid var(--line);border-radius:
   }
 
   function renderSlots() {
-    const taken = booked[selDate] || [];
     const d = new Date(selDate + "T00:00:00");
     $("timeTitle").textContent = `2. 시간 선택 (${d.getMonth()+1}월 ${d.getDate()}일 ${DOW[d.getDay()]}요일)`;
-    $("slots").innerHTML = OPEN_HOURS.map(t => {
-      const isTaken = taken.includes(t) || slotPassed(selDate, t);
-      if (isTaken) return `<button class="slot taken" disabled>${t}<small>${taken.includes(t) ? "예약됨" : "마감"}</small></button>`;
-      return `<button class="slot${t === selTime ? " sel" : ""}" data-time="${t}">${t}<small>예약 가능</small></button>`;
+    $("slots").innerHTML = (slots[selDate] || []).map(s => {
+      if (s.booked) return `<button class="slot taken" disabled>${s.t}<small>예약됨</small></button>`;
+      if (passed(selDate, s.t)) return `<button class="slot taken" disabled>${s.t}<small>마감</small></button>`;
+      return `<button class="slot${s.t === selTime ? " sel" : ""}" data-time="${s.t}">${s.t}<small>예약 가능</small></button>`;
     }).join("");
     $("timeCard").classList.remove("hidden");
   }
@@ -192,10 +193,12 @@ select,input{width:100%;padding:13px;border:1px solid var(--line);border-radius:
     $("formCard").classList.remove("hidden");
   }
 
+  function setMsg(text, cls) { $("msg").textContent = text; $("msg").className = "msg " + (cls || ""); }
+
   $("days").addEventListener("click", e => {
     const b = e.target.closest("[data-date]"); if (!b) return;
     selDate = b.dataset.date; selTime = null;
-    $("msg").textContent = "";
+    setMsg("");
     renderCalendar(); renderSlots(); renderForm();
     $("timeCard").scrollIntoView({ behavior: "smooth", block: "nearest" });
   });
@@ -203,7 +206,7 @@ select,input{width:100%;padding:13px;border:1px solid var(--line);border-radius:
   $("slots").addEventListener("click", e => {
     const b = e.target.closest("[data-time]"); if (!b) return;
     selTime = b.dataset.time;
-    $("msg").textContent = "";
+    setMsg("");
     renderSlots(); renderForm();
     $("formCard").scrollIntoView({ behavior: "smooth", block: "nearest" });
   });
@@ -211,7 +214,14 @@ select,input{width:100%;padding:13px;border:1px solid var(--line);border-radius:
   $("prev").addEventListener("click", () => { view = new Date(view.getFullYear(), view.getMonth()-1, 1); renderCalendar(); });
   $("next").addEventListener("click", () => { view = new Date(view.getFullYear(), view.getMonth()+1, 1); renderCalendar(); });
 
-  function setMsg(text, cls) { $("msg").textContent = text; $("msg").className = "msg " + (cls || ""); }
+  async function refresh() {
+    await loadSlots();
+    selTime = null;
+    renderCalendar();
+    if (selDate && freeCount(selDate) > 0) renderSlots();
+    else { selDate = null; $("timeCard").classList.add("hidden"); }
+    renderForm();
+  }
 
   $("submit").addEventListener("click", async () => {
     const company = $("company").value;
@@ -222,22 +232,19 @@ select,input{width:100%;padding:13px;border:1px solid var(--line);border-radius:
     $("submit").disabled = true;
     setMsg("예약 중...");
     try {
+      const done = `${$("summary").textContent} 예약이 완료되었습니다.`;
       const { error } = await sb.from("bookings").insert({
         company, barracks, booking_date: selDate, booking_time: selTime + ":00"
       });
       if (error) {
-        if (error.code === "23505") {
-          setMsg("방금 다른 분이 이 시간을 예약했습니다. 다른 시간을 선택하세요.", "err");
-          await loadBooked(); selTime = null; renderCalendar(); renderSlots(); renderForm();
-        } else {
-          setMsg("예약 실패: " + error.message, "err");
-        }
+        if (error.code === "23505") setMsg("방금 다른 분이 이 시간을 예약했습니다. 다른 시간을 선택하세요.", "err");
+        else if (error.code === "42501") setMsg("예약할 수 없는 시간입니다. 다른 시간을 선택하세요.", "err");
+        else setMsg("예약 실패: " + error.message, "err");
+        await refresh();
         return;
       }
-      const done = `${$("summary").textContent} 예약이 완료되었습니다.`;
       $("barracks").value = ""; $("company").value = "";
-      await loadBooked(); selTime = null;
-      renderCalendar(); renderSlots(); renderForm();
+      await refresh();
       $("formCard").classList.remove("hidden");
       $("summary").textContent = "예약 완료";
       setMsg(done, "good");
@@ -249,10 +256,16 @@ select,input{width:100%;padding:13px;border:1px solid var(--line);border-radius:
   });
 
   (async () => {
-    const ok = await loadBooked();
+    const ok = await loadSlots();
     renderCalendar();
-    if (!ok) $("days").insertAdjacentHTML("beforebegin",
-      '<p class="msg err">예약 현황을 불러오지 못했습니다. 새로고침 해주세요.</p>');
+    const notice = $("notice");
+    if (!ok) {
+      notice.textContent = "예약 현황을 불러오지 못했습니다. 새로고침 해주세요.";
+      notice.classList.remove("hidden");
+    } else if (Object.keys(slots).length === 0) {
+      notice.textContent = "아직 예약 가능한 날짜가 없습니다. 날짜가 열리면 여기에 표시돼요.";
+      notice.classList.remove("hidden");
+    }
   })();
 })();
 </script>
