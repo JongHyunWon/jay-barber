@@ -82,6 +82,8 @@ select,input{width:100%;padding:13px;border:1px solid var(--line);border-radius:
   <div class="card hidden" id="formCard">
     <p class="step">3. 정보 입력</p>
     <div class="summary" id="summary"></div>
+    <label for="name">이름</label>
+    <input id="name" placeholder="예: 홍길동" maxlength="20">
     <label for="company">중대</label>
     <select id="company">
       <option value="">선택하세요</option>
@@ -224,8 +226,10 @@ select,input{width:100%;padding:13px;border:1px solid var(--line);border-radius:
   }
 
   $("submit").addEventListener("click", async () => {
+    const name = $("name").value.trim();
     const company = $("company").value;
     const barracks = $("barracks").value.trim();
+    if (!name) return setMsg("이름을 입력하세요.", "err");
     if (!company) return setMsg("중대를 선택하세요.", "err");
     if (!barracks) return setMsg("생활관을 입력하세요.", "err");
 
@@ -234,7 +238,7 @@ select,input{width:100%;padding:13px;border:1px solid var(--line);border-radius:
     try {
       const done = `${$("summary").textContent} 예약이 완료되었습니다.`;
       const { error } = await sb.from("bookings").insert({
-        company, barracks, booking_date: selDate, booking_time: selTime + ":00"
+        name, company, barracks, booking_date: selDate, booking_time: selTime + ":00"
       });
       if (error) {
         if (error.code === "23505") setMsg("방금 다른 분이 이 시간을 예약했습니다. 다른 시간을 선택하세요.", "err");
