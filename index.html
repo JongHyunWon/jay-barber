@@ -99,7 +99,7 @@ select,input{width:100%;padding:13px;border:1px solid var(--line);border-radius:
 
 <script>
 (() => {
-  const DAYS_AHEAD = 60;   // 오늘부터 며칠 뒤까지 보여줄지
+  const DAYS_AHEAD = 60;
 
   const sb = window.supabase.createClient(
     "https://rupsdtnlkxyesgvnwpor.supabase.co",
@@ -113,7 +113,7 @@ select,input{width:100%;padding:13px;border:1px solid var(--line);border-radius:
   const today = new Date(); today.setHours(0,0,0,0);
   const last = new Date(today); last.setDate(last.getDate() + DAYS_AHEAD);
   let view = new Date(today.getFullYear(), today.getMonth(), 1);
-  let slots = {};   // { "2026-11-20": [{t:"10:00", booked:false}, ...] }
+  let slots = {};
   let selDate = null, selTime = null;
 
   $("dows").innerHTML = DOW.map(d => `<div class="dow">${d}</div>`).join("");
@@ -241,19 +241,24 @@ select,input{width:100%;padding:13px;border:1px solid var(--line);border-radius:
         name, company, barracks, booking_date: selDate, booking_time: selTime + ":00"
       });
       if (error) {
-        if (error.code === "23505") setMsg("방금 다른 분이 이 시간을 예약했습니다. 다른 시간을 선택하세요.", "err");
-        else if (error.code === "42501") setMsg("예약할 수 없는 시간입니다. 다른 시간을 선택하세요.", "err");
-        else setMsg("예약 실패: " + error.message, "err");
-        await refresh();
+        let t;
+        if (error.code === "23505") t = "방금 다른 분이 이 시간을 예약했습니다. 다른 시간을 선택하세요.";
+        else if (error.code === "42501") t = "예약할 수 없는 시간입니다. (권한 오류 42501)";
+        else t = "예약 실패: " + error.message;
+        setMsg(t, "err");
+        alert(t);
+        if (error.code === "23505") await refresh();
         return;
       }
-      $("barracks").value = ""; $("company").value = "";
+      $("name").value = ""; $("barracks").value = ""; $("company").value = "";
       await refresh();
       $("formCard").classList.remove("hidden");
       $("summary").textContent = "예약 완료";
       setMsg(done, "good");
+      alert(done);
     } catch (e) {
       setMsg("오류: " + e.message, "err");
+      alert("오류: " + e.message);
     } finally {
       $("submit").disabled = false;
     }
